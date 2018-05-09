@@ -1,5 +1,6 @@
 {
     "name": "qbus/contao-wrapper-relation-bundle",
+    "description": "Make Contao content elements \"know\" their surrounding wrapper.",
     "type": "contao-bundle",
     "license": "LGPL-3.0+",
     "authors": [
