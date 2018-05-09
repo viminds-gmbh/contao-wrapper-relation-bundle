@@ -9,7 +9,7 @@
  * @license LGPL-3.0+
  */
 
-use Qbus\WrapperRelationBundle\DataContainer\Callback\Content;
+use Qbus\WrapperRelationBundle\DataContainer\Content;
 
 /**
  * Callbacks

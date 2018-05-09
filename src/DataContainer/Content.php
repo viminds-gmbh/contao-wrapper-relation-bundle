@@ -9,7 +9,7 @@
  * @license LGPL-3.0+
  */
 
-namespace Qbus\WrapperRelationBundle\DataContainer\Callback;
+namespace Qbus\WrapperRelationBundle\DataContainer;
 
 use Contao\DataContainer;
 use Contao\Database;
