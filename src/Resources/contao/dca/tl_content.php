@@ -14,7 +14,7 @@ use Qbus\WrapperRelationBundle\DataContainer\Content;
 /**
  * Callbacks
  */
-foreach (['oncreate', 'onsubmit', 'oncut', 'oncopy', 'ondelete'] as $callback) {
+foreach (['onload', 'oncreate', 'onsubmit', 'oncut', 'oncopy', 'ondelete'] as $callback) {
 	$GLOBALS['TL_DCA']['tl_content']['config'][$callback.'_callback'][] = [
 		Content::class,
 		$callback

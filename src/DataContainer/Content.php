@@ -12,10 +12,51 @@
 namespace Qbus\WrapperRelationBundle\DataContainer;
 
 use Contao\DataContainer;
+use Contao\Input;
 use Contao\Database;
+use Contao\System;
 
 class Content
 {
+
+	public function onload(DataContainer $dc) {
+		$session = System::getContainer()->get('session');
+		if (isset($_GET['clipboard'])) {
+			$session->set('QBUS_WRAPPER_RELATION_CLIPBOARD', []);
+		}
+
+		// A separate clipboard is needed because Contao's CLIPBOARD is cleared
+		// before the oncut_callback is called.
+		$clipboardName = 'QBUS_WRAPPER_RELATION_CLIPBOARD';
+		if (!$session->has($clipboardName)) {
+			$session->set($clipboardName, []);
+		}
+		$clipboard = $session->get($clipboardName);
+
+		$db = Database::getInstance();
+
+		if (Input::get('act') === 'paste') {
+			$id = Input::get('id');
+			$element = $db->prepare('SELECT * FROM tl_content WHERE id = ?')->execute($id);
+			$clipboard[$id] = $element->pid;
+			$session->set($clipboardName, $clipboard);
+		}
+
+		$contaoClipboard = $session->get('CLIPBOARD');
+		if (
+			$contaoClipboard[$dc->table]['mode'] === 'cutAll'
+			&& \is_array($contaoClipboard[$dc->table]['id'])
+		) {
+			// Only one ID is needed because the parent is the same for all: It
+			// is not possible to "select multiple" across parents. Use the last
+			// ID so that setAllWrapperIds() is called only after the last
+			// element has been cut.
+			$lastId = \end($contaoClipboard[$dc->table]['id']);
+			$element = $db->prepare('SELECT * FROM tl_content WHERE id = ?')->execute($lastId);
+			$clipboard[$lastId] = $element->pid;
+			$session->set($clipboardName, $clipboard);
+		}
+	}
 
 	public function oncreate($table, $insertId, $set, DataContainer $dc) {
 		if (empty($GLOBALS['TL_WRAPPERS']['start'])) {
@@ -51,6 +92,18 @@ class Content
 	}
 
 	public function oncut(DataContainer $dc) {
+		if (empty($GLOBALS['TL_WRAPPERS']['start'])) {
+			return;
+		}
+
+		$session = System::getContainer()->get('session');
+		$clipboardName = 'QBUS_WRAPPER_RELATION_CLIPBOARD';
+		$clipboard = $session->get($clipboardName);
+		if (isset($clipboard[$dc->id])) {
+			$this->setAllWrapperIds($clipboard[$dc->id]);
+			unset($clipboard[$dc->id]);
+			$session->set($clipboardName, $clipboard);
+		}
 		$this->onCutOrCopy($dc->id);
 	}
 
