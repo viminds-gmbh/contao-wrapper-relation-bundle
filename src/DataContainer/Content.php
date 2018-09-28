@@ -35,13 +35,10 @@ class Content
 
 		$db = Database::getInstance();
 
+		$id = null;
 		if (Input::get('act') === 'paste') {
 			$id = Input::get('id');
-			$element = $db->prepare('SELECT * FROM tl_content WHERE id = ?')->execute($id);
-			$clipboard[$id] = $element->pid;
-			$session->set($clipboardName, $clipboard);
 		}
-
 		$contaoClipboard = $session->get('CLIPBOARD');
 		if (
 			$contaoClipboard[$dc->table]['mode'] === 'cutAll'
@@ -51,9 +48,11 @@ class Content
 			// is not possible to "select multiple" across parents. Use the last
 			// ID so that setAllWrapperIds() is called only after the last
 			// element has been cut.
-			$lastId = \end($contaoClipboard[$dc->table]['id']);
-			$element = $db->prepare('SELECT * FROM tl_content WHERE id = ?')->execute($lastId);
-			$clipboard[$lastId] = $element->pid;
+			$id = \end($contaoClipboard[$dc->table]['id']);
+		}
+		if ($id !== null) {
+			$element = $db->prepare('SELECT * FROM tl_content WHERE id = ?')->execute($id);
+			$clipboard[$id] = $element->pid;
 			$session->set($clipboardName, $clipboard);
 		}
 	}
