@@ -11,35 +11,44 @@
 
 namespace Qbus\WrapperRelationBundle\DataContainer;
 
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Doctrine\DBAL\Connection;
+use Contao\CoreBundle\Framework\ContaoFrameworkInterface;
 use Contao\DataContainer;
 use Contao\Input;
-use Contao\Database;
-use Contao\System;
 
 class Content
 {
 
+	private $session;
+	private $connection;
+	private $framework;
+
+	public function __construct(SessionInterface $session, Connection $connection, ContaoFrameworkInterface $framework) {
+		$this->session = $session;
+		$this->connection = $connection;
+		$this->framework = $framework;
+	}
+
 	public function onload(DataContainer $dc) {
-		$session = System::getContainer()->get('session');
 		if (isset($_GET['clipboard'])) {
-			$session->set('QBUS_WRAPPER_RELATION_CLIPBOARD', []);
+			$this->session->set('QBUS_WRAPPER_RELATION_CLIPBOARD', []);
 		}
 
 		// A separate clipboard is needed because Contao's CLIPBOARD is cleared
 		// before the oncut_callback is called.
 		$clipboardName = 'QBUS_WRAPPER_RELATION_CLIPBOARD';
-		if (!$session->has($clipboardName)) {
-			$session->set($clipboardName, []);
+		if (!$this->session->has($clipboardName)) {
+			$this->session->set($clipboardName, []);
 		}
-		$clipboard = $session->get($clipboardName);
-
-		$db = Database::getInstance();
+		$clipboard = $this->session->get($clipboardName);
 
 		$id = null;
-		if (Input::get('act') === 'paste') {
-			$id = Input::get('id');
+		$inputAdapter = $this->framework->getAdapter(Input::class);
+		if ($inputAdapter->get('act') === 'paste') {
+			$id = $inputAdapter->get('id');
 		}
-		$contaoClipboard = $session->get('CLIPBOARD');
+		$contaoClipboard = $this->session->get('CLIPBOARD');
 		if (
 			$contaoClipboard[$dc->table]['mode'] === 'cutAll'
 			&& \is_array($contaoClipboard[$dc->table]['id'])
@@ -51,9 +60,11 @@ class Content
 			$id = \end($contaoClipboard[$dc->table]['id']);
 		}
 		if ($id !== null) {
-			$element = $db->prepare('SELECT * FROM tl_content WHERE id = ?')->execute($id);
+			$stmt = $this->connection->prepare('SELECT * FROM tl_content WHERE id = ?');
+			$stmt->execute([$id]);
+			$element = $stmt->fetch(\PDO::FETCH_OBJ);
 			$clipboard[$id] = $element->pid;
-			$session->set($clipboardName, $clipboard);
+			$this->session->set($clipboardName, $clipboard);
 		}
 	}
 
@@ -95,13 +106,12 @@ class Content
 			return;
 		}
 
-		$session = System::getContainer()->get('session');
 		$clipboardName = 'QBUS_WRAPPER_RELATION_CLIPBOARD';
-		$clipboard = $session->get($clipboardName);
+		$clipboard = $this->session->get($clipboardName);
 		if (isset($clipboard[$dc->id])) {
 			$this->setAllWrapperIds($clipboard[$dc->id]);
 			unset($clipboard[$dc->id]);
-			$session->set($clipboardName, $clipboard);
+			$this->session->set($clipboardName, $clipboard);
 		}
 		$this->onCutOrCopy($dc->id);
 	}
@@ -115,8 +125,9 @@ class Content
 			return;
 		}
 
-		$db = Database::getInstance();
-		$element = $db->prepare("SELECT * FROM tl_content WHERE id = ?")->execute($id);
+		$stmt = $this->connection->prepare('SELECT * FROM tl_content WHERE id = ?');
+		$stmt->execute([$id]);
+		$element = $stmt->fetch(\PDO::FETCH_OBJ);
 		$wrapperId = $this->getWrapperId($element->pid, $element->sorting);
 		$this->setWrapperId($element->id, $wrapperId);
 
@@ -133,8 +144,9 @@ class Content
 			return;
 		}
 
-		$db = Database::getInstance();
-		$element = $db->prepare("SELECT * FROM tl_content WHERE id = ?")->execute($dc->id);
+		$stmt = $this->connection->prepare('SELECT * FROM tl_content WHERE id = ?');
+		$stmt->execute([$dc->id]);
+		$element = $stmt->fetch(\PDO::FETCH_OBJ);
 
 		if (
 			in_array($element->type, $GLOBALS['TL_WRAPPERS']['start'])
@@ -153,11 +165,11 @@ class Content
 		$arrWrappers = array_merge($GLOBALS['TL_WRAPPERS']['start'], $GLOBALS['TL_WRAPPERS']['stop']);
 		$strWrappers = "'".implode("','", $arrWrappers)."'";
 		$statement = "SELECT * FROM tl_content WHERE pid = ? AND (type IN(".$strWrappers.")".$includeStmt.")".$excludeStmt." AND sorting < ? ORDER BY sorting DESC";
-		$db = Database::getInstance();
-		$precedingWrapper = $db->prepare($statement)->execute($pid, $sorting);
+		$stmt = $this->connection->prepare($statement);
+		$stmt->execute([$pid, $sorting]);
 		$wrapperId = 0;
 		$level = 0;
-		while ($precedingWrapper->next() && $wrapperId === 0) {
+		while (($precedingWrapper = $stmt->fetch(\PDO::FETCH_OBJ)) !== false && $wrapperId === 0) {
 			if (in_array($precedingWrapper->type, $GLOBALS['TL_WRAPPERS']['start'])) {
 				if ($level === 0) {
 					$wrapperId = $precedingWrapper->id;
@@ -176,14 +188,14 @@ class Content
 	}
 
 	protected function setWrapperId($id, $wrapperId) {
-		$db = Database::getInstance();
-		$db->prepare('UPDATE tl_content SET wrapperId = ? WHERE id = ?')->execute($wrapperId, $id);
+		$stmt = $this->connection->prepare('UPDATE tl_content SET wrapperId = ? WHERE id = ?');
+		$stmt->execute([$wrapperId, $id]);
 	}
 
 	protected function setAllWrapperIds($pid, $exclude = null, $include = null) {
-		$db = Database::getInstance();
-		$el = $db->prepare("SELECT * FROM tl_content WHERE pid = ?")->execute($pid);
-		while ($el->next()) {
+		$stmt = $this->connection->prepare("SELECT * FROM tl_content WHERE pid = ?");
+		$stmt->execute([$pid]);
+		while (($el = $stmt->fetch(\PDO::FETCH_OBJ)) !== false) {
 			// No need to update the element that will be deleted anyway
 			if ($el->id !== $exclude) {
 				$wrapperId = $this->getWrapperId($el->pid, $el->sorting, $exclude, $include);

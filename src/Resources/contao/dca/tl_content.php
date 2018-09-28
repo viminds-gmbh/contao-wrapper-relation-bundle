@@ -9,14 +9,12 @@
  * @license LGPL-3.0+
  */
 
-use Qbus\WrapperRelationBundle\DataContainer\Content;
-
 /**
  * Callbacks
  */
 foreach (['onload', 'oncreate', 'onsubmit', 'oncut', 'oncopy', 'ondelete'] as $callback) {
 	$GLOBALS['TL_DCA']['tl_content']['config'][$callback.'_callback'][] = [
-		Content::class,
+		'qbus_wrapper_relation.data_container.content',
 		$callback
 	];
 }

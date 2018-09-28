@@ -1,0 +1,7 @@
+services:
+    qbus_wrapper_relation.data_container.content:
+        class: Qbus\WrapperRelationBundle\DataContainer\Content
+        arguments:
+            - "@session"
+            - "@database_connection"
+            - "@contao.framework"
