@@ -73,7 +73,7 @@ class Content
 			return;
 		}
 
-		$wrapperId = $this->getWrapperId($set['pid'], $set['sorting']);
+		$wrapperId = $this->getWrapperId($set['pid'], $set['ptable'], $set['sorting']);
 		$this->setWrapperId($insertId, $wrapperId);
 
 		// This usually doesn't do anything because by default, the type at
@@ -128,7 +128,7 @@ class Content
 		$stmt = $this->connection->prepare('SELECT * FROM tl_content WHERE id = ?');
 		$stmt->execute([$id]);
 		$element = $stmt->fetch(\PDO::FETCH_OBJ);
-		$wrapperId = $this->getWrapperId($element->pid, $element->sorting);
+		$wrapperId = $this->getWrapperId($element->pid, $element->ptable, $element->sorting);
 		$this->setWrapperId($element->id, $wrapperId);
 
 		if (
@@ -157,16 +157,16 @@ class Content
 	}
 
 
-	protected function getWrapperId($pid, $sorting, $exclude = null, $include = null) {
+	protected function getWrapperId($pid, $ptable, $sorting, $exclude = null, $include = null) {
 		// For deleted wrappers
 		$excludeStmt = $exclude === null ? '' : ' AND id != ' . $exclude;
 		// For wrappers whose type hasn't been saved yet (onsubmit)
 		$includeStmt = $include === null ? '' : ' OR id = ' . $include;
 		$arrWrappers = array_merge($GLOBALS['TL_WRAPPERS']['start'], $GLOBALS['TL_WRAPPERS']['stop']);
 		$strWrappers = "'".implode("','", $arrWrappers)."'";
-		$statement = "SELECT * FROM tl_content WHERE pid = ? AND invisible != '1' AND (type IN(".$strWrappers.")".$includeStmt.")".$excludeStmt." AND sorting < ? ORDER BY sorting DESC";
+		$statement = "SELECT * FROM tl_content WHERE pid = ? AND ptable = ? AND invisible != '1' AND (type IN(".$strWrappers.")".$includeStmt.")".$excludeStmt." AND sorting < ? ORDER BY sorting DESC";
 		$stmt = $this->connection->prepare($statement);
-		$stmt->execute([$pid, $sorting]);
+		$stmt->execute([$pid, $ptable, $sorting]);
 		$wrapperId = 0;
 		$level = 0;
 		while (($precedingWrapper = $stmt->fetch(\PDO::FETCH_OBJ)) !== false && $wrapperId === 0) {
@@ -198,7 +198,7 @@ class Content
 		while (($el = $stmt->fetch(\PDO::FETCH_OBJ)) !== false) {
 			// No need to update the element that will be deleted anyway
 			if ($el->id !== $exclude) {
-				$wrapperId = $this->getWrapperId($el->pid, $el->sorting, $exclude, $include);
+				$wrapperId = $this->getWrapperId($el->pid, $el->ptable, $el->sorting, $exclude, $include);
 				$this->setWrapperId($el->id, $wrapperId);
 			}
 		}
