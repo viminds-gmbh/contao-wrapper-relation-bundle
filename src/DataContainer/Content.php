@@ -164,7 +164,7 @@ class Content
 		$includeStmt = $include === null ? '' : ' OR id = ' . $include;
 		$arrWrappers = array_merge($GLOBALS['TL_WRAPPERS']['start'], $GLOBALS['TL_WRAPPERS']['stop']);
 		$strWrappers = "'".implode("','", $arrWrappers)."'";
-		$statement = "SELECT * FROM tl_content WHERE pid = ? AND (type IN(".$strWrappers.")".$includeStmt.")".$excludeStmt." AND sorting < ? ORDER BY sorting DESC";
+		$statement = "SELECT * FROM tl_content WHERE pid = ? AND invisible != '1' AND (type IN(".$strWrappers.")".$includeStmt.")".$excludeStmt." AND sorting < ? ORDER BY sorting DESC";
 		$stmt = $this->connection->prepare($statement);
 		$stmt->execute([$pid, $sorting]);
 		$wrapperId = 0;
