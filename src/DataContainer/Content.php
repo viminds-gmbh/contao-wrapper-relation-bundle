@@ -50,7 +50,8 @@ class Content
 		}
 		$contaoClipboard = $this->session->get('CLIPBOARD');
 		if (
-			$contaoClipboard[$dc->table]['mode'] === 'cutAll'
+			isset($contaoClipboard[$dc->table]['mode'])
+			&& $contaoClipboard[$dc->table]['mode'] === 'cutAll'
 			&& \is_array($contaoClipboard[$dc->table]['id'])
 		) {
 			// Only one ID is needed because the parent is the same for all: It
