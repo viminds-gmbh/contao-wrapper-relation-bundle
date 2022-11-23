@@ -62,9 +62,12 @@ class Content
 		}
 		if ($id !== null) {
 			$stmt = $this->connection->prepare('SELECT * FROM tl_content WHERE id = ?');
-			$stmt->execute([$id]);
-			$element = $stmt->fetch(\PDO::FETCH_OBJ);
-			$clipboard[$id] = $element->pid;
+			$result = $stmt->execute([$id]);
+			if (\is_bool($result)) {
+				$result = $stmt;
+			}
+			$element = $result->fetchAssociative();
+			$clipboard[$id] = $element['pid'];
 			$this->session->set($clipboardName, $clipboard);
 		}
 	}
@@ -127,16 +130,19 @@ class Content
 		}
 
 		$stmt = $this->connection->prepare('SELECT * FROM tl_content WHERE id = ?');
-		$stmt->execute([$id]);
-		$element = $stmt->fetch(\PDO::FETCH_OBJ);
-		$wrapperId = $this->getWrapperId($element->pid, $element->ptable, $element->sorting);
-		$this->setWrapperId($element->id, $wrapperId);
+		$result = $stmt->execute([$id]);
+		if (\is_bool($result)) {
+			$result = $stmt;
+		}
+		$element = $result->fetchAssociative();
+		$wrapperId = $this->getWrapperId($element['pid'], $element['ptable'], $element['sorting']);
+		$this->setWrapperId($element['id'], $wrapperId);
 
 		if (
-			in_array($element->type, $GLOBALS['TL_WRAPPERS']['start'])
-			|| in_array($element->type, $GLOBALS['TL_WRAPPERS']['stop'])
+			in_array($element['type'], $GLOBALS['TL_WRAPPERS']['start'])
+			|| in_array($element['type'], $GLOBALS['TL_WRAPPERS']['stop'])
 		) {
-			$this->setAllWrapperIds($element->pid);
+			$this->setAllWrapperIds($element['pid']);
 		}
 	}
 
@@ -146,14 +152,17 @@ class Content
 		}
 
 		$stmt = $this->connection->prepare('SELECT * FROM tl_content WHERE id = ?');
-		$stmt->execute([$dc->id]);
-		$element = $stmt->fetch(\PDO::FETCH_OBJ);
+		$result = $stmt->execute([$dc->id]);
+		if (\is_bool($result)) {
+			$result = $stmt;
+		}
+		$element = $result->fetchAssociative();
 
 		if (
-			in_array($element->type, $GLOBALS['TL_WRAPPERS']['start'])
-			|| in_array($element->type, $GLOBALS['TL_WRAPPERS']['stop'])
+			in_array($element['type'], $GLOBALS['TL_WRAPPERS']['start'])
+			|| in_array($element['type'], $GLOBALS['TL_WRAPPERS']['stop'])
 		) {
-			$this->setAllWrapperIds($element->pid, $element->id);
+			$this->setAllWrapperIds($element['pid'], $element['id']);
 		}
 	}
 
@@ -167,20 +176,23 @@ class Content
 		$strWrappers = "'".implode("','", $arrWrappers)."'";
 		$statement = "SELECT * FROM tl_content WHERE pid = ? AND ptable = ? AND invisible != '1' AND (type IN(".$strWrappers.")".$includeStmt.")".$excludeStmt." AND sorting < ? ORDER BY sorting DESC";
 		$stmt = $this->connection->prepare($statement);
-		$stmt->execute([$pid, $ptable, $sorting]);
+		$result = $stmt->execute([$pid, $ptable, $sorting]);
+		if (\is_bool($result)) {
+			$result = $stmt;
+		}
 		$wrapperId = 0;
 		$level = 0;
-		while (($precedingWrapper = $stmt->fetch(\PDO::FETCH_OBJ)) !== false && $wrapperId === 0) {
-			if (in_array($precedingWrapper->type, $GLOBALS['TL_WRAPPERS']['start'])) {
+		while (($precedingWrapper = $result->fetchAssociative()) !== false && $wrapperId === 0) {
+			if (in_array($precedingWrapper['type'], $GLOBALS['TL_WRAPPERS']['start'])) {
 				if ($level === 0) {
-					$wrapperId = $precedingWrapper->id;
+					$wrapperId = $precedingWrapper['id'];
 				}
 				// Should be no different from `elseif (level > 0)`
 				else {
 					$level--;
 				}
 			}
-			elseif (in_array($precedingWrapper->type, $GLOBALS['TL_WRAPPERS']['stop'])) {
+			elseif (in_array($precedingWrapper['type'], $GLOBALS['TL_WRAPPERS']['stop'])) {
 				$level++;
 			}
 		}
@@ -195,12 +207,15 @@ class Content
 
 	protected function setAllWrapperIds($pid, $exclude = null, $include = null) {
 		$stmt = $this->connection->prepare("SELECT * FROM tl_content WHERE pid = ?");
-		$stmt->execute([$pid]);
-		while (($el = $stmt->fetch(\PDO::FETCH_OBJ)) !== false) {
+		$result = $stmt->execute([$pid]);
+		if (\is_bool($result)) {
+			$result = $stmt;
+		}
+		while (($el = $result->fetchAssociative()) !== false) {
 			// No need to update the element that will be deleted anyway
-			if ($el->id !== $exclude) {
-				$wrapperId = $this->getWrapperId($el->pid, $el->ptable, $el->sorting, $exclude, $include);
-				$this->setWrapperId($el->id, $wrapperId);
+			if ($el['id'] !== $exclude) {
+				$wrapperId = $this->getWrapperId($el['pid'], $el['ptable'], $el['sorting'], $exclude, $include);
+				$this->setWrapperId($el['id'], $wrapperId);
 			}
 		}
 	}
