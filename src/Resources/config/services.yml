@@ -5,3 +5,4 @@ services:
             - "@session"
             - "@database_connection"
             - "@contao.framework"
+        public: true
