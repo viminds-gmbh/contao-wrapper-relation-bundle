@@ -11,44 +11,50 @@
 
 namespace Qbus\WrapperRelationBundle\DataContainer;
 
-use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Doctrine\DBAL\Connection;
-use Contao\CoreBundle\Framework\ContaoFrameworkInterface;
+use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\DataContainer;
 use Contao\Input;
 
 class Content
 {
 
-	private $session;
+	private $requestStack;
 	private $connection;
 	private $framework;
 
-	public function __construct(SessionInterface $session, Connection $connection, ContaoFrameworkInterface $framework) {
-		$this->session = $session;
+	public function __construct(RequestStack $requestStack, Connection $connection, ContaoFramework $framework) {
+		$this->requestStack = $requestStack;
 		$this->connection = $connection;
 		$this->framework = $framework;
 	}
 
 	public function onload(DataContainer $dc) {
+		$session = $this->requestStack->getSession();
+
+		if (!$session->isStarted()) {
+			return;
+		}
+
 		if (isset($_GET['clipboard'])) {
-			$this->session->set('QBUS_WRAPPER_RELATION_CLIPBOARD', []);
+			$session->set('QBUS_WRAPPER_RELATION_CLIPBOARD', []);
 		}
 
 		// A separate clipboard is needed because Contao's CLIPBOARD is cleared
 		// before the oncut_callback is called.
 		$clipboardName = 'QBUS_WRAPPER_RELATION_CLIPBOARD';
-		if (!$this->session->has($clipboardName)) {
-			$this->session->set($clipboardName, []);
+		if (!$session->has($clipboardName)) {
+			$session->set($clipboardName, []);
 		}
-		$clipboard = $this->session->get($clipboardName);
+		$clipboard = $session->get($clipboardName);
 
 		$id = null;
 		$inputAdapter = $this->framework->getAdapter(Input::class);
 		if ($inputAdapter->get('act') === 'paste') {
 			$id = $inputAdapter->get('id');
 		}
-		$contaoClipboard = $this->session->get('CLIPBOARD');
+		$contaoClipboard = $session->get('CLIPBOARD');
 		if (
 			isset($contaoClipboard[$dc->table]['mode'])
 			&& $contaoClipboard[$dc->table]['mode'] === 'cutAll'
@@ -68,7 +74,7 @@ class Content
 			}
 			$element = $result->fetchAssociative();
 			$clipboard[$id] = $element['pid'];
-			$this->session->set($clipboardName, $clipboard);
+			$session->set($clipboardName, $clipboard);
 		}
 	}
 
@@ -110,12 +116,18 @@ class Content
 			return;
 		}
 
+		$session = $this->requestStack->getSession();
+
+		if (!$session->isStarted()) {
+			return;
+		}
+
 		$clipboardName = 'QBUS_WRAPPER_RELATION_CLIPBOARD';
-		$clipboard = $this->session->get($clipboardName);
+		$clipboard = $session->get($clipboardName);
 		if (isset($clipboard[$dc->id])) {
 			$this->setAllWrapperIds($clipboard[$dc->id]);
 			unset($clipboard[$dc->id]);
-			$this->session->set($clipboardName, $clipboard);
+			$session->set($clipboardName, $clipboard);
 		}
 		$this->onCutOrCopy($dc->id);
 	}

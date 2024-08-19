@@ -2,7 +2,7 @@ services:
     qbus_wrapper_relation.data_container.content:
         class: Qbus\WrapperRelationBundle\DataContainer\Content
         arguments:
-            - "@session"
+            - "@request_stack"
             - "@database_connection"
             - "@contao.framework"
         public: true
