@@ -1,5 +1,5 @@
 {
-    "name": "qbus/contao-wrapper-relation-bundle",
+    "name": "viminds-gmbh/contao-wrapper-relation-bundle",
     "description": "Make Contao content elements \"know\" their surrounding wrapper.",
     "type": "contao-bundle",
     "license": "LGPL-3.0+",
@@ -12,8 +12,8 @@
         }
     ],
     "require": {
-        "php": ">=5.6.0",
-        "contao/core-bundle": "^4.4 || ^5.3",
+        "php": "^7.4 || ^8.1",
+        "contao/core-bundle": "^5.3",
         "doctrine/dbal": "^2.11 || ^3.3"
     },
     "extra": {
